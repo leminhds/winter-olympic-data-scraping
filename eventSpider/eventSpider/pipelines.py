@@ -25,5 +25,7 @@ class EventspiderPipeline:
         f = re.findall("\d+", adapter['n_disciplines'], re.I)
         adapter['n_disciplines'] = f[1]
         
+        print(f)
+        
         
         return item

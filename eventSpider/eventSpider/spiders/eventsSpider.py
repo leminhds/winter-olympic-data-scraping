@@ -42,7 +42,6 @@ class EventsSpider(scrapy.Spider):
         """
         item = EventspiderItem()
         selector = Selector(response)
-        print(response.url)
         table1_rows = selector.xpath("//table[1]//tr")
         
         item['event_title'] = table1_rows[1].xpath('td//text()').extract_first()
@@ -156,9 +155,13 @@ class EventsSpider(scrapy.Spider):
                                     'date': date,
                                     'participants': participants,
                                     'n_country_participate': nocs}
-            
-        # medalist table
-        medal_table = selector.xpath("//table[3]//tr")
+        
+        
+        # in some case, Non medal category appear as well. we will skip those
+        if selector.xpath("//h2[2]//text()").extract_first() == 'Non-medal events':
+              medal_table = selector.xpath("//table[4]//tr")
+        else:
+            medal_table = selector.xpath("//table[3]//tr")
         
     
         
@@ -193,6 +196,7 @@ class EventsSpider(scrapy.Spider):
                                     'bronze_country': bronze_country}
         item['disciplines_details'] = sport_dict    
         
+        print(response.url)
         print(item)
         return item
         
