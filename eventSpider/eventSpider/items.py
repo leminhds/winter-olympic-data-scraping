@@ -17,6 +17,6 @@ class EventspiderItem(Item):
     n_disciplines = Field()
     
     # or a list, dict
-    disciplines_names = Field()
+    disciplines_details = Field()
     medals_per_country = Field()
-    sub_categories_details = Field()
+   

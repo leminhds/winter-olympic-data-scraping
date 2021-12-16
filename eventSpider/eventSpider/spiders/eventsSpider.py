@@ -63,8 +63,6 @@ class EventsSpider(scrapy.Spider):
             item['n_disciplines'] = table1_rows[7].xpath('td//text()').extract_first()
         
         
-
-        # TODO: sparse the data out
         
         table2 = selector.xpath("//table[3]//tr")
         
@@ -81,23 +79,33 @@ class EventsSpider(scrapy.Spider):
                 disciplines.append(tr.xpath('td//a//text()').extract())
                 
         #flattening the list
-        # TODO: move this process to pipeline
         disciplines = [item for sublist in disciplines for item in sublist]
-        item['disciplines_names'] = disciplines
+        item['disciplines_details'] = disciplines
         # flatten the list
         url_list = [item for sublist in url_list for item in sublist]
         
-        
-        table3 = selector.xpath("//table[4]//tr")
+        # some case there are also a table of "Other disciplines. This change the order of the
+        # relevant table we want to get. check fortable name first here"
+        if selector.xpath("//h2[6]//text()").extract_first() == 'Other Disciplines':
+            table3 = selector.xpath("//table[5]//tr")
+        else:
+            table3 = selector.xpath("//table[4]//tr")
+            
+            
         medal_dict = dict()
         
         for tr in table3[1:]:
             #name of country
             NOC = tr.xpath('td[1]//a//text()').extract_first()
+         
             gold_medal = tr.xpath('td[3]//text()').extract_first()
+           
             silver_medal = tr.xpath('td[4]//text()').extract_first()
+         
             bronze_medal = tr.xpath('td[5]//text()').extract_first()
+          
             total_medal = tr.xpath('td[6]//text()').extract_first()
+           
             
             # store in dict so we can more easily copy this to database later
             medal_dict[NOC] = {'gold_medal': gold_medal,
@@ -106,89 +114,87 @@ class EventsSpider(scrapy.Spider):
                                 'total_medal': total_medal}
     
         item['medals_per_country'] = medal_dict
-        print(item)
-        return item
+ 
         
-    #     sport_detail_dict = [] # dictionary to add all the sport and its winner of each category of each disciplines
-    #     for i, url in enumerate(url_list):
-    #         final_url = urllib.parse.urljoin(self.baseUrl, url)
-    #         event_name = item['event_title'] + " " + disciplines[i]
-    #         dis_dict = yield scrapy.Request(url=final_url, callback=self.parse_sports, meta={'event_item': item, 'discipline': event_name})
-    #     sport_detail_dict.append(dis_dict)
-    #     item['sub_categories_details'] = sport_detail_dict
+        sport_detail_dict = [] # dictionary to add all the sport and its winner of each category of each disciplines
+        for i, url in enumerate(url_list):
+            final_url = urllib.parse.urljoin(self.baseUrl, url)
+            event_name = item['event_title'] + " " + disciplines[i]
+            yield scrapy.Request(url=final_url, callback=self.parse_sports, meta={'event_item': item, 'discipline': event_name})
         
         
         
-    # def parse_sports(self, response):
-    #     """
-    #     In order to pass everything as 1 item later, we will create 1 dictionary per discipline
-    #     For each disciplines, we will have different values which represent each category.
-    #     These categories act as the key for further details about it such as category name, date,
-    #     name of winner, country of winner, etc.
-    #     """
-    #     selector = Selector(response)
-    #     item = response.meta.get('event_item')
-    #     discipline = response.meta.get('discipline')
         
-    #     sport_dict = dict()
+    def parse_sports(self, response):
+        """
+        In order to pass everything as 1 item later, we will create 1 dictionary per discipline
+        For each disciplines, we will have different values which represent each category.
+        These categories act as the key for further details about it such as category name, date,
+        name of winner, country of winner, etc.
+        """
+        selector = Selector(response)
+        item = response.meta.get('event_item')
+        discipline = response.meta.get('discipline')
         
-    #     table = selector.xpath("//table[2]//tr")
+        sport_dict = dict()
+        
+        table = selector.xpath("//table[2]//tr")
      
         
-    #     """
-    #     For some reason, the list returned below always start and end with an empty list
-    #     we will therefore always exclude these. That's why we use [1:-1]
-    #     """
-    #     for tr in table[1:-1]:
-    #         category = tr.xpath("td[1]//a//text()").extract_first()
-    #         date = tr.xpath("td[3]//text()").extract_first()
-    #         participants = tr.xpath("td[4]//text()").extract_first()
-    #         # number of country in the category
-    #         nocs = tr.xpath("td[5]//text()").extract_first()
+        """
+        For some reason, the list returned below always start and end with an empty list
+        we will therefore always exclude these. That's why we use [1:-1]
+        """
+        for tr in table[1:-1]:
+            category = tr.xpath("td[1]//a//text()").extract_first()
+            date = tr.xpath("td[3]//text()").extract_first()
+            participants = tr.xpath("td[4]//text()").extract_first()
+            # number of country in the category
+            nocs = tr.xpath("td[5]//text()").extract_first()
             
-    #         sport_dict[category] = {'category': category,
-    #                                 'date': date,
-    #                                 'participants': participants,
-    #                                 'n_country_participate': nocs}
+            sport_dict[category] = {'category': category,
+                                    'date': date,
+                                    'participants': participants,
+                                    'n_country_participate': nocs}
             
-    #     # medalist table
-    #     medal_table = selector.xpath("//table[3]//tr")
+        # medalist table
+        medal_table = selector.xpath("//table[3]//tr")
         
     
         
-    #     # only the first 1 is always none here
-    #     for tr in medal_table[1:]:
-    #         category = tr.xpath("td[1]//a//text()").extract_first()
-    #         # in case of team sport, the structure of the xpath look different
-    #         gold_name = tr.xpath("td[2]//a//text()").extract_first()
-    #         if gold_name is None:
-    #             gold_name = tr.xpath("td[2]//text()").extract_first()
-    #         else:
-    #             pass
-    #         gold_country = tr.xpath("td[3]//a//text()").extract_first()
-    #         silver_name = tr.xpath("td[4]//a//text()").extract_first()
-    #         if silver_name is None:
-    #             silver_name = tr.xpath("td[4]//text()").extract_first()
-    #         else:
-    #             pass
-    #         silver_country = tr.xpath("td[5]//a//text()").extract_first()
-    #         bronze_name = tr.xpath("td[6]//a//text()").extract_first()
-    #         if bronze_name is None:
-    #             bronze_name = tr.xpath("td[6]//text()").extract_first()
-    #         else:
-    #             pass
-    #         bronze_country = tr.xpath("td[7]//a//text()").extract_first()
+        # only the first 1 is always none here
+        for tr in medal_table[1:]:
+            category = tr.xpath("td[1]//a//text()").extract_first()
+            # in case of team sport, the structure of the xpath look different
+            gold_name = tr.xpath("td[2]//a//text()").extract_first()
+            if gold_name is None:
+                gold_name = tr.xpath("td[2]//text()").extract_first()
             
-    #         # add these into the sport dictionary as well
-    #         sport_dict[category] = {'gold_medalist': gold_name,
-    #                                 'gold_country': gold_country,
-    #                                 'silver_medalist': silver_name,
-    #                                 'silver_country': silver_country,
-    #                                 'bronze_medalist': bronze_name,
-    #                                 'bronze_country': bronze_country}
+            gold_country = tr.xpath("td[3]//a//text()").extract_first()
             
-    #     discipline_dict = {discipline: sport_dict}
-    #     return discipline_dict
+            silver_name = tr.xpath("td[4]//a//text()").extract_first()
+            if silver_name is None:
+                silver_name = tr.xpath("td[4]//text()").extract_first()
+            
+            silver_country = tr.xpath("td[5]//a//text()").extract_first()
+            
+            bronze_name = tr.xpath("td[6]//a//text()").extract_first()
+            if bronze_name is None:
+                bronze_name = tr.xpath("td[6]//text()").extract_first()
+           
+            bronze_country = tr.xpath("td[7]//a//text()").extract_first()
+            
+            # add these into the sport dictionary as well
+            sport_dict[category] = {'gold_medalist': gold_name,
+                                    'gold_country': gold_country,
+                                    'silver_medalist': silver_name,
+                                    'silver_country': silver_country,
+                                    'bronze_medalist': bronze_name,
+                                    'bronze_country': bronze_country}
+        item['disciplines_details'] = sport_dict    
+        
+        print(item)
+        return item
         
       
         
