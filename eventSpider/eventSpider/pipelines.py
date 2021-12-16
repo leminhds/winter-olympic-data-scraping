@@ -10,4 +10,12 @@ from itemadapter import ItemAdapter
 
 class EventspiderPipeline:
     def process_item(self, item, spider):
+        adapter = ItemAdapter(item)
+
+        items = ['opening_ceremony', 'closing_ceremony']
+        for element in items:
+            adapter[element] = adapter[element].strip()
+        
+        
+        
         return item

@@ -6,6 +6,7 @@
 from scrapy.item import Item, Field
 
 class EventspiderItem(Item):
+    # we can put one variable to an item
     event_title = Field()
     event_place = Field()
     opening_ceremony = Field()
@@ -14,5 +15,8 @@ class EventspiderItem(Item):
     n_countries = Field()
     n_medals = Field()
     n_disciplines = Field()
+    
+    # or a list, dict
     disciplines_names = Field()
     medals_per_country = Field()
+    sub_categories_details = Field()
