@@ -34,9 +34,9 @@ class EventspiderPipeline:
         CREATE TABLE IF NOT EXISTS medals (
             event_title TEXT,
             country TEXT,
-            gold TEXT,
-            silver TEXT,
-            bronze TEXT
+            gold int,
+            silver int,
+            bronze int
         );
         
         """
@@ -74,7 +74,7 @@ class EventspiderPipeline:
         
         
         self.cur.execute("""
-                         INSERT INTO events(event_title, event_place, opening_ceremony, closing_ceremony, n_participants, n_countries, n_medals, n_disciplines)
+                         INSERT INTO events (event_title, event_place, opening_ceremony, closing_ceremony, n_participants, n_countries, n_medals, n_disciplines)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                          """, (item['event_title'], item['event_place'], item['opening_ceremony'], item['closing_ceremony'], item['n_participants'], item['n_countries'], item['n_medals'], item['n_disciplines']))
         self.con.commit()
@@ -88,9 +88,3 @@ class EventspiderPipeline:
         self.con.commit()
             
         return item
-        
-    
-        
-    
-            
-        
