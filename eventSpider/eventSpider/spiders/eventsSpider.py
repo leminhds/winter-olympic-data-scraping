@@ -120,7 +120,7 @@ class EventsSpider(scrapy.Spider):
         
         for i, url in enumerate(url_list):
             final_url = urllib.parse.urljoin(self.baseUrl, url)
-            event_name = item['event_title'] + " " + discipline_list[i]
+            event_name = discipline_list[i]
 
             
 
@@ -165,8 +165,7 @@ class EventsSpider(scrapy.Spider):
             item['disciplines_details'][discipline][category]['participants'] = participants
             item['disciplines_details'][discipline][category]['n_country_participate'] = nocs
                 
-                
-        
+  
         
         # in some case, Non medal category appear as well. we will skip those
         if selector.xpath("//h2[2]//text()").extract_first() == 'Non-medal events':
