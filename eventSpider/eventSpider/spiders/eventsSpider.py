@@ -2,6 +2,7 @@ import scrapy
 from scrapy import Selector
 from eventSpider.items import EventspiderItem
 import urllib.parse
+import time
 
 class EventsSpider(scrapy.Spider):
     name = 'eventSpider'
@@ -72,18 +73,11 @@ class EventsSpider(scrapy.Spider):
             disciplines = tr.xpath('td//a//text()').extract()
             
             for url in urls:
-                # # check if we get empty list
-                # if not url:
-                #     continue
-                # else:
                 url_list.append(url)   
             for discipline in disciplines:
                 discipline_list.append(discipline)
-                
-      
-        
+                  
 
-        
         # some case there are also a table of "Other disciplines. This change the order of the
         # relevant table we want to get. check fortable name first here"
         if selector.xpath("//h2[6]//text()").extract_first() == 'Other Disciplines':
@@ -116,18 +110,11 @@ class EventsSpider(scrapy.Spider):
         item['medals_per_country'] = medal_dict
         item['disciplines_details'] = {}
 
-
-        
-        for i, url in enumerate(url_list):
-            final_url = urllib.parse.urljoin(self.baseUrl, url)
-            event_name = discipline_list[i]
-
-            
-
-            yield scrapy.Request(url=final_url, callback=self.parse_sports, meta={'event_item': item, 'discipline': event_name})
-        
-        
-        
+        if url_list:
+            final_url = urllib.parse.urljoin(self.baseUrl, url_list[0])
+            item['disciplines_details'][discipline_list[0]] = {}
+            yield scrapy.Request(url=final_url, callback=self.parse_sports, meta={'event_item': item, 'url_list': url_list[1:], 'discipline_list': discipline_list[1:], 'current_discipline': discipline_list[0]})
+ 
         
     def parse_sports(self, response):
         """
@@ -138,14 +125,14 @@ class EventsSpider(scrapy.Spider):
         """
         selector = Selector(response)
         item = response.meta.get('event_item')
-        discipline = response.meta.get('discipline')
-        
+        discipline_list = response.meta.get('discipline_list')
+        discipline = response.meta.get('current_discipline')
+        url_list = response.meta.get('url_list')
         
         table = selector.xpath("//table[2]//tr")
-        
-        sport_dict = dict.fromkeys(['date', 'participants', 'n_country_participate', 'gold_medalist', 'gold_country', 'silver_medalist', 'silver_country', 'bronze_medalist', 'bronze_country'], None)
-        item['disciplines_details'][discipline] = {}
-
+     
+        # category list to keep track of category name
+        category_list = []
         
         """
         For some reason, the list returned below always start and end with an empty list
@@ -153,30 +140,38 @@ class EventsSpider(scrapy.Spider):
         """
         for tr in table[1:-1]:
             category = tr.xpath("td[1]//a//text()").extract_first()
+            
+            # in this table and the medal_table, sometime to category name is not the same
+            # despite referring to the same sport. therefore, we will keep track of all the category
+            category_list.append(category)
+            
             date = tr.xpath("td[3]//text()").extract_first()
             participants = tr.xpath("td[4]//text()").extract_first()
             # number of country in the category
             nocs = tr.xpath("td[5]//text()").extract_first()
             
+            
        
-            item['disciplines_details'][discipline].update({category: sport_dict}) 
+            item['disciplines_details'][discipline][category] = {}
 
-            item['disciplines_details'][discipline][category]['date'] = date
-            item['disciplines_details'][discipline][category]['participants'] = participants
-            item['disciplines_details'][discipline][category]['n_country_participate'] = nocs
+            item['disciplines_details'][discipline][category].update({'date': date})
+            item['disciplines_details'][discipline][category].update({'participants': participants})
+            item['disciplines_details'][discipline][category].update({'n_country_participate': nocs})
                 
   
         
         # in some case, Non medal category appear as well. we will skip those
         if selector.xpath("//h2[2]//text()").extract_first() == 'Non-medal events':
-              medal_table = selector.xpath("//table[4]//tr")
+            medal_table = selector.xpath("//table[4]//tr")
         else:
             medal_table = selector.xpath("//table[3]//tr")
-        
     
         
+        i = 0
         # only the first 1 is always none here
         for tr in medal_table[1:]:
+            category = category_list[i]
+            i += 1
             # in case of team sport, the structure of the xpath look different
             gold_name = tr.xpath("td[2]//a//text()").extract_first()
             if gold_name is None:
@@ -198,17 +193,22 @@ class EventsSpider(scrapy.Spider):
             
                 
             
-            item['disciplines_details'][discipline][category]['gold_medalist'] = gold_name
-            item['disciplines_details'][discipline][category]['gold_country'] = gold_country
-            item['disciplines_details'][discipline][category]['silver_medalist'] = silver_name
-            item['disciplines_details'][discipline][category]['silver_country'] = silver_country
-            item['disciplines_details'][discipline][category]['bronze_medalist'] = bronze_name
-            item['disciplines_details'][discipline][category]['bronze_country'] = bronze_country
+            item['disciplines_details'][discipline][category].update({'gold_medalist': gold_name})
+            item['disciplines_details'][discipline][category].update({'gold_country': gold_country})
+            item['disciplines_details'][discipline][category].update({'silver_medalist': silver_name})
+            item['disciplines_details'][discipline][category].update({'silver_country': silver_country})
+            item['disciplines_details'][discipline][category].update({'bronze_medalist': bronze_name})
+            item['disciplines_details'][discipline][category].update({'bronze_country': bronze_country})
         
-
+        # if there is still url in the list, we wait to go through all the url before yielding the item
+        if url_list:
+            final_url = urllib.parse.urljoin(self.baseUrl, url_list[0])
+            item['disciplines_details'][discipline_list[0]] = {}
+            yield scrapy.Request(url=final_url, callback=self.parse_sports, meta={'event_item': item, 'url_list': url_list[1:], 'discipline_list': discipline_list[1:], 'current_discipline': discipline_list[0]})
+        else:
+            yield item
+            
     
-        print(response.url)
-        return item
         
       
         
